@@ -68,9 +68,9 @@ bool PhotoCuttingLayer::initSlices(char* photo) {
 			if (i == _rows - 1 && j == _columns - 1) {
 				continue;
 			}
-			Sprite* slice = Sprite::createWithTexture(texture, Rect(_sliceW*j, _sliceH*i, _sliceW, _sliceH));
+			Sprite* slice = Sprite::createWithTexture(texture, Rect(_sliceW*i, _sliceH*j, _sliceW, _sliceH));
 			slice->setAnchorPoint(Vec2(0, 0));
-			slice->setPosition(Vec2(_sliceW*j, _sliceH*(_rows - 1 - i)));
+			slice->setPosition(Vec2(_sliceW*i, _sliceH*(_columns - 1 - j)));
 			addChild(slice);
 			_slices[i][j] = slice;
 		}
@@ -103,24 +103,37 @@ void PhotoCuttingLayer::initTouchEventListener() {
 
 void PhotoCuttingLayer::move(int x, int y) {
 	y = _columns - y - 1;
-	CCLOG("_slices[x][y + 1]: %d, %d, %d\n", x, y+1, _slices[x][y + 1]);
-	CCLOG("_slices[x][y - 1]: %d, %d, %d\n", x, y+1, _slices[x][y - 1]);
-	CCLOG("_slices[x - 1][y]: %d, %d, %d\n", x, y+1, _slices[x - 1][y]);
-	CCLOG("_slices[x + 1][y]: %d, %d, %d\n", x, y+1, _slices[x + 1][y]);
-	if (y < _rows - 1 && _slices[x][y + 1] == nullptr) {
-		_slices[x][y + 1] = _slices[x][y];
-		_slices[x][y] = nullptr;
+	Point target;
+	bool found = false;
+	auto slice = _slices[x][y];
+
+	if (slice == nullptr) {
+		return;
+	}
+	
+	if (y < _columns - 1 && _slices[x][y + 1] == nullptr) {
+		target.x = x;
+		target.y = y + 1;
+		found = true;
 	}
 	else if (y>0 && _slices[x][y - 1] == nullptr) {
-		_slices[x][y - 1] = _slices[x][y];
-		_slices[x][y] = nullptr;
+		target.x = x;
+		target.y = y - 1;
+		found = true;
 	}
 	else if (x > 0 && _slices[x - 1][y] == nullptr) {
-		_slices[x - 1][y] = _slices[x][y];
-		_slices[x][y] = nullptr;
+		target.x = x - 1;
+		target.y = y;
+		found = true;
 	}
-	else if (x < _columns - 1 && _slices[x + 1][y] == nullptr) {
-		_slices[x + 1][y] = _slices[x][y];
+	else if (x < _rows - 1 && _slices[x + 1][y] == nullptr) {
+		target.x = x + 1;
+		target.y = y;
+		found = true;
+	}
+	if (found) {
+		slice->runAction(MoveTo::create(0.25f,  Vec2(target.x*_sliceW, (_columns - 1 - target.y)*_sliceH)));
+		_slices[target.x][target.y] = slice;
 		_slices[x][y] = nullptr;
 	}
 }
@@ -147,7 +160,7 @@ void PhotoCuttingLayer::restart() {
 			else {
 				int index = static_cast<int>(floor(CCRANDOM_0_1()*slices.size()));
 				_slices[i][j] = slices[index];
-				auto slice = slices[index];
+				_slices[i][j]->setPosition(i*_sliceW, (_columns - 1 - j)*_sliceH);
 				slices.erase(slices.begin() + index);
 			}
 		}
